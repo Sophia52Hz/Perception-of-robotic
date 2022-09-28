@@ -10,7 +10,7 @@ from Animal_Classification_Network import *
 def main():
     #######################################################################
     # TODO: Extend the binary classification to multi-class classification
-    N_CLASSES = 2 # num of classes
+    N_CLASSES = 20 # num of classes
     #######################################################################
 
 

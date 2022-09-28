@@ -22,6 +22,11 @@ class CNN(nn.Module):
         ##############################################################
         # Your Code
         ##############################################################
+        self.batchnorm1 = nn.BatchNorm2d(64)
+        self.batchnorm2 = nn.BatchNorm2d(128)
+        self.batchnorm3 = nn.BatchNorm2d(256)
+        self.dropout = nn.Dropout(p=0.2)
+        
 
         # Fully Connected Layers
         #######################################
@@ -34,13 +39,17 @@ class CNN(nn.Module):
         # TODO: Apply your added layers in this function
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
+        x = self.batchnorm1(x)
         x = self.maxpool(x)
         x = F.relu(self.conv3(x))
+        x = self.batchnorm2(x)
         x = self.maxpool(x)
         x = F.relu(self.conv4(x))
+        x = self.batchnorm3(x)
         x = self.maxpool(x)
         x = x.view(-1, 256 * 2 * 2)
         x = self.fc1(x)
         x = self.fc2(x)
+        x = self.dropout(x)
         x = F.log_softmax(x, dim=1)
         return x

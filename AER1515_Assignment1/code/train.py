@@ -1,9 +1,11 @@
+import os
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import torch.optim as optim
 from glob import glob
-import os
+
 from animal_face_dataset import *
 from Animal_Classification_Network import *
 from torch.utils.data.sampler import SubsetRandomSampler
@@ -15,9 +17,9 @@ def main():
     # hyper-parameters for network training
     ###############################################################################
     # TODO: Extend the binary classification to multi-class classification
-    N_CLASSES = 2 # num of classes
+    N_CLASSES = 20 # num of classes
     BATCH_SIZE = 32 # training batch size
-    EPOCH_NUMBER = 10 # num of epochs
+    EPOCH_NUMBER = 60 # num of epochs
     VALIDATION_PER = 0.2 # Validation Percentage (you can play with this parameter)
     LEARNING_RATE = 1e-4 # Learning Rate
     IS_SHOW_IMAGES = False
@@ -101,6 +103,7 @@ def main():
     ####################################################################################
     TRAIN_LOSS = []
     VALIDATION_LOSS = []
+    min_valid_loss = np.inf #minmum validation loss
 
     for epoch in range(1, EPOCH_NUMBER + 1):
         epoch_loss = 0.0
@@ -127,6 +130,21 @@ def main():
         #################################
         # Your Code
         #################################
+        total_val_loss = 0.0
+        total_true = 0
+        with torch.no_grad():
+            model.eval()
+            for data_, target_ in validation_loader:
+                data_ = data_.to(device)
+                target_ = target_.to(device)
+
+                outputs = model(data_)
+                loss = criterion(outputs,target_).item()
+                _, preds = torch.max(outputs, dim=1)
+                total_val_loss += loss
+                true = torch.sum(preds == target_).item()
+                total_true += true
+        valid_loss = round(total_val_loss,2)
 
         # Append result to the lists for each epoch
         ##############################################################################
@@ -135,22 +153,33 @@ def main():
         # TODO: Append validation results to the lists for each epoch
         # Your Code
         ##############################################################################
+        VALIDATION_LOSS.append(valid_loss/len(validation_loader))
+        print(f"Validation loss: {valid_loss}%")
 
 
     # Save the model
     # TODO: Instead save the model here,
     # TODO: you should save the model with the minimal validation loss
-    torch.save(model.state_dict(), "model.pt")
+    if min_valid_loss > valid_loss:
+        print(f'Validation Loss Decreased({min_valid_loss:.6f\
+        }--->{valid_loss:.6f}) \t Saving The Model')
+        min_valid_loss = valid_loss
+         
+        # Saving State Dict
+        torch.save(model.state_dict(), "model.pt")
 
 
     # TODO: Plot the training loss and validation loss in the same graph
     #################################################################################
     # Your Code
-    plt.subplots(figsize=(6, 4))
-    plt.plot(range(EPOCH_NUMBER), TRAIN_LOSS, color="blue", label="Training Set")
-    plt.legend()
-    plt.xlabel("Number of Epochs")
-    plt.ylabel("Loss")
+    plt.subplots(figsize=(6, 4))  
+    plt.plot([*range(len(TRAIN_LOSS))], TRAIN_LOSS, label='training loss')
+    plt.plot([*range(len(VALIDATION_LOSS))], VALIDATION_LOSS, label='validation loss')
+    plt.title('Losses', fontsize=15)
+    plt.ylabel('Loss', fontsize=15)
+    plt.xlabel('Number of Epochs', fontsize=15)
+    #     plt.ylim([0.0, 1.5])
+    plt.legend(['Training Loss', 'Validation Loss'], loc='upper right', fontsize=15)
     plt.show()
     #################################################################################
 
