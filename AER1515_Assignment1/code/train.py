@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.optim as optim
 from glob import glob
-
+torch.manual_seed(0)
 from animal_face_dataset import *
 from Animal_Classification_Network import *
 from torch.utils.data.sampler import SubsetRandomSampler
@@ -19,10 +19,11 @@ def main():
     # TODO: Extend the binary classification to multi-class classification
     N_CLASSES = 20 # num of classes
     BATCH_SIZE = 32 # training batch size
-    EPOCH_NUMBER = 60 # num of epochs
+    EPOCH_NUMBER = 30 # num of epochs
     VALIDATION_PER = 0.2 # Validation Percentage (you can play with this parameter)
-    LEARNING_RATE = 1e-4 # Learning Rate
+    LEARNING_RATE = 8e-5 # Learning Rate
     IS_SHOW_IMAGES = False
+    IS_VALIDATION = True
     ###############################################################################
 
 
@@ -94,7 +95,7 @@ def main():
     model = CNN(N_CLASSES).to(device)
     criterion = nn.CrossEntropyLoss()
     # TODO: Change to other optimizers
-    optimizer = optim.RMSprop(model.parameters(), lr=LEARNING_RATE)
+    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     #################################################################################
 
 
@@ -130,21 +131,17 @@ def main():
         #################################
         # Your Code
         #################################
-        total_val_loss = 0.0
-        total_true = 0
-        with torch.no_grad():
-            model.eval()
-            for data_, target_ in validation_loader:
-                data_ = data_.to(device)
-                target_ = target_.to(device)
+        if IS_VALIDATION:
+            valid_loss = 0.0
+            with torch.no_grad():
+                model.eval()
+                for data_, target_ in validation_loader:
+                    data_ = data_.to(device)
+                    target_ = target_.to(device)
 
-                outputs = model(data_)
-                loss = criterion(outputs,target_).item()
-                _, preds = torch.max(outputs, dim=1)
-                total_val_loss += loss
-                true = torch.sum(preds == target_).item()
-                total_true += true
-        valid_loss = round(total_val_loss,2)
+                    outputs = model(data_)
+                    loss = criterion(outputs,target_).item()
+                    valid_loss += loss
 
         # Append result to the lists for each epoch
         ##############################################################################
@@ -153,19 +150,22 @@ def main():
         # TODO: Append validation results to the lists for each epoch
         # Your Code
         ##############################################################################
-        VALIDATION_LOSS.append(valid_loss/len(validation_loader))
-        print(f"Validation loss: {valid_loss}%")
+        if IS_VALIDATION:
+            VALIDATION_LOSS.append(valid_loss/len(validation_loader))
+            print(f"Validation loss: {valid_loss/len(validation_loader)}")
 
 
     # Save the model
     # TODO: Instead save the model here,
     # TODO: you should save the model with the minimal validation loss
-    if min_valid_loss > valid_loss:
-        print(f'Validation Loss Decreased({min_valid_loss:.6f\
-        }--->{valid_loss:.6f}) \t Saving The Model')
-        min_valid_loss = valid_loss
-         
-        # Saving State Dict
+        if IS_VALIDATION and min_valid_loss > valid_loss:
+            print(f'Validation Loss Decreased({min_valid_loss/ len(validation_loader):.6f}--->{valid_loss / len(validation_loader):.6f}) \t Saving The Model')
+            min_valid_loss = valid_loss
+            
+            # Saving State Dict
+            torch.save(model.state_dict(), "model.pt")
+    
+    if not IS_VALIDATION:
         torch.save(model.state_dict(), "model.pt")
 
 
@@ -174,12 +174,16 @@ def main():
     # Your Code
     plt.subplots(figsize=(6, 4))  
     plt.plot([*range(len(TRAIN_LOSS))], TRAIN_LOSS, label='training loss')
-    plt.plot([*range(len(VALIDATION_LOSS))], VALIDATION_LOSS, label='validation loss')
+    if IS_VALIDATION:
+        plt.plot([*range(len(VALIDATION_LOSS))], VALIDATION_LOSS, label='validation loss')
     plt.title('Losses', fontsize=15)
     plt.ylabel('Loss', fontsize=15)
     plt.xlabel('Number of Epochs', fontsize=15)
     #     plt.ylim([0.0, 1.5])
-    plt.legend(['Training Loss', 'Validation Loss'], loc='upper right', fontsize=15)
+    lengend_list = ['Training Loss']
+    if IS_VALIDATION:
+        lengend_list.append('Validation Loss')
+    plt.legend(lengend_list, loc='upper right', fontsize=15)
     plt.show()
     #################################################################################
 
